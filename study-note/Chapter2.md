@@ -1,9 +1,9 @@
 # Chapter.2 JPA 시작 
 
 > ### 📋 차례
-> 1) 객체 매핑 시작
-> 2) persistence.xml 설정
-> 3) 애플리케이션 개발
+> [1) 객체 매핑 시작](#1-객체-매핑-시작)<br>
+> [2) persistence.xml 설정](#2-persistencexml-설정)<br>
+> [3) 애플리케이션 개발](#3-애플리케이션-개발)
 
 <br>
 
