@@ -7,11 +7,6 @@
 > [4) 데이터베이스 스키마 자동 생성](#4-데이터베이스-스키마-자동-생성) <br>
 > [5) DDL 생성 기능](#5-ddl-생성-기능) <br>
 > [6) 기본 키 매핑](#6-기본-키-매핑) <br>
-> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[i. 기본키 직접 할당](#1-기본키-직접-할당) <br>
-> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ii. IDENTITY 자동 생성 전략](#2-IDENTITY-자동-생성-전략) <br>
-> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[iii. SEQUENCE 자동 생성 전략](#3-SEQUENCE-자동-생성-전략) <br>
-> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[iv. TABLE 자동 생성 전략](#4-TABLE-자동-생성-전략) <br>
-> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[v. AUTO 자동 생성 전략](#5-AUTO-자동-생성-전략) <br>
 > [7) 필드와 칼럼 매핑: 레퍼런스](#7-필드와-칼럼-매핑-레퍼런스)
 
 

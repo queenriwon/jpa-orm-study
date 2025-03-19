@@ -5,11 +5,6 @@
 > [2) 영속성 컨텍스트란?](#2-영속성-컨텍스트란)<br>
 > [3) 엔티티와 생명주기](#3-엔티티와-생명주기)<br>
 > [4) 영속성 컨텍스트의 특징](#4-영속성-컨텍스트의-특징)<br>
-> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1) 1차 캐시](#1-1차-캐시)<br>
-> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2) 동일성 보장](#2-동일성-보장)<br>
-> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3) 트랜잭션을 지원하는 쓰기 지연](#3-트랜잭션을-지원하는-쓰기-지연)<br>
-> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[4) 변경 감지](#4-변경-감지)<br>
-> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[5) 지연 로딩](#5-지연-로딩)<br>
 > [5) 플러시](#5-플러시)<br>
 > [6) 준영속](#6-준영속)<br>                                 
 
