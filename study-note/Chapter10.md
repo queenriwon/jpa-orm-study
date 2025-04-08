@@ -101,7 +101,7 @@
 ### 3️⃣ 프로젝션
 * **엔티티 프로젝션**: 엔티티를 조회, 이렇게 조회한 엔티티는 영속성 컨텍스트에서 관리
 * **임베디드 타입 프로젝션**: 임베디드 타입은 엔티티 타입이 아닌 값 타입이기 때문에 엔티티를 기준으로 작성되어야 함 (`o.address`)
-  * 영속성 컨텍스트에서 관리가 되지 안흥ㅁ
+  * 영속성 컨텍스트에서 관리가 되지 않음
 * **스칼라 타입 프로젝션**
 * 여러 값 조회: `Query` + `Object[]` 사용
 * **NEW 명령어**: 객체를 사용하여 DB의 데이터 조회
@@ -263,3 +263,350 @@ setMaxResults(int maxResult);       // 조회할 데이터 수
 * Named 쿼리: 애플리케이션 로딩 시점에 JPQL 문법을 체크하고 미리 파싱 -> 오류 확인, 결과 재사용, 성능이점, 조회 최적화
   * 어노테이션 정의 `@NamedQuery`
   * XML에 정의(우선권)
+
+<br>
+
+## 4) QueryDSL
+
+### 1️⃣ 시작
+- 쿼리용 클래스 생성(Q로 시작하는 쿼리 타입들 생성)
+- 별칭 사용 
+```java
+// (1) 별칭 사용 - 직접 지정
+JPAQuery query = new JPAQueny(em);
+QMember qmember = new QMember("m");
+
+// (2) 기본 인스턴스 사용
+public class QMember extends EntityPathBase<Member> {
+    public static final QMember member = new QMember("member1");
+    ...
+}
+QMember qMember = QMember.member;
+```
+<br>
+
+### 2️⃣ 검색 조건
+```java
+List<Item> list = query.from(item)
+        .where(item.name.eq("좋은상품").and(item.price.gt(20000)))
+        .list(item);
+```
+- and나 or 사용 가능
+
+<br>
+
+### 3️⃣ 결과 조회
+- `uniqueResult()`: 조회 결과가 한 건일 때 사용, 조회 결과가 없으면 null을 반환, 결과가 하나 이상이면 예외 발생
+- `singleResult()`: 결과가 하나 이상이면, 처음 데이터를 반환
+- `list()`: 결과가 하나 이상일 때 사용. 결과가 없으면 빈 컬렉션 반환
+
+<br>
+
+### 4️⃣ 페이징과 정렬
+```java
+QItem item = QItem.item;
+
+query.from(item)
+    .where(item.price.gt(20000))
+    .orderBy(item.price.desc(), item.stockQuantity.asc())
+    .offset(10).limit(20)
+    .list(item);
+```
+- 정렬: asc(), desc()
+- 페이징: offset, limit를 조합해서 사용
+
+<br>
+
+```java
+QueryModifiers queryModifiers = new QueryModifiers(20L, 10L);   // limit, offset
+List<Item> list = query.from(item)
+        .restrict(queryModifiers)
+        .list(item);
+```
+- `restrict()` 메서드에 `QueryModifiers`를 파라미터로 사용
+
+<br>
+
+```java
+SearchResult<Item> result = query.from(item)
+        .where(item.price.gt(10000))
+        .offset(10).limit(20)
+        .listResults(item);
+
+long total = result.getTotal();     // 검색된 전체 데이터 수
+long limit = result.getLimit();
+long offset = result.getOffset();
+List<Item> results = result.getResults();       // 조회된 데이터
+```
+- 전체 데이터 조회를 위한 쿼리를 한번 더 실행
+
+<br>
+
+### 5️⃣ 그룹
+```java
+.groupBy(item.price)
+.having(item.price.gt(1000))
+.list(item);
+```
+
+<br>
+
+### 6️⃣ 조인
+```java
+query.from(order)
+    .join(order.member, member)
+    .leftJoin(order.orderItems, orderItem)
+    .list(order);
+
+query.from(order)
+    .leftJoin(order.orderItems, orderItem)
+    .on(orderItem.count.gt(2))      // on 사용
+    .list(order);
+
+qeury.from(order)
+    .innerJoin(order.member, member).fetch()        // 페치조인 사용
+    .leftJoin(order.orderItems, orderItem).fetch()
+    .list(order);
+
+query.from(order, member)       // 세타조인
+    .where(order.member.eq(member))
+    .list(order);
+```
+- `innerJoin(join)`, `leftJoin`, `rightJoin`, `fullJoin`, 페치조인 사용 가능
+- `join(조인 대상, 별칭으로 사용할 쿼리 타입)`
+
+<br>
+
+### 7️⃣ 서브 쿼리
+```java
+query.from(item)
+    .where(item.price.eq(
+          new JPASubQuery().from(itemSub).unique(itemSub.price.max())
+    ))
+    .list(item);
+```
+
+<br>
+
+### 8️⃣ 프로젝션과 결과 반환
+```java
+// (1) 프로젝션 대상이 하나
+List<String> result = query.from(item).list(item.name);
+
+// (2) 여러 칼럼 반환과 튜플
+List<Tuple> result = query.from(item).list(item.name, item.price);
+
+// (3) 빈 생성 - 프로퍼티 접근 (setter)
+List<ItemDTO> result = query.from(item).list(
+        Projections.bean(ItemDTO.class, item.name.as("username"), item.price));
+
+// (4) 빈 생성 - 필드 직접 접근 (fields)
+List<ItemDTO> result = query.from(item).list(
+        Projections.fields(ItemDTO.class, item.name.as("username"), item.price));
+
+// (5) 빈 생성 - 생성자 직접 접근 (constructor)
+List<ItemDTO> result = query.from(item).list(
+        Projections.constructor(ItemDTO.class, item.name, item.price));
+```
+
+<br>
+
+### 9️⃣ 수정, 삭제 배치 쿼리
+```java
+// (1) 수정 쿼리 (JPAUpdateClause 사용)
+JPAUpdateClause updateClause = new JPAUpdateClause(em, item);
+long count = updateClause.where(item.name.eq("..."))
+        .set(item.price, item.price.add(100))
+        .execute();
+
+// (2) 삭제 쿼리 (JPADeleteClause)
+JPADeleteClause deleteClause = new JPADeleteClause(em, item);
+long count = deleteClause.where(item.name.eq("..."))
+        .execute();
+```
+
+<br>
+
+### 1️⃣0️⃣ 동적 쿼리
+```java
+BooleanBuilder builder = new BooleanBuilder();
+if (param.getPrice != null) {
+    builder.and(item.price.gt(param.getPrice()));
+}
+List<Item> result = query.from(item)
+        .where(builder)
+        .list(item);
+```
+
+<br>
+
+### 1️⃣1️⃣ 메서드 위임
+- 검색조건 직접 정의 가능(정적 메서드)
+```java
+public class ItemExpression {
+    @QuaryDelegate(Item.class)
+    public static BooleanExpression isExpensive(QItem item, Integer price) {
+        return item.price.gt(price);
+    }
+}
+
+query.from(item).where(item.isExpensive(30000)).list(item);
+```
+
+<br>
+
+## 5) 네이티브 SQL
+> ### 📢 특정 데이터베이스에 종석적인 기능을 지원하는 방법
+> - 특정 데이터베이스만 사용하는 함수
+>   - JPQL에서 네이티브 SQL 함수를 호출할 수 있다.
+>   - 하이버네이트는 데이터베이스 방언에 각 데이터베이스에 종속적인 함수들을 정의
+> - 특정 데이터베이스만 지원하는 SQL 쿼리 힌트
+>   - 하이버네이트를 포함한 몇몇 JPA 구현체들이 지원
+> - 인라인 뷰, UNION, INTERSECT
+>   - 하이버네이트는 지원하지 않지만 일부 JPA 구현체들이 지원
+> - 스토어 프로시저
+>   - JPQL에서 스토어드 프로시저를 호출할 수 있다.
+> - 특정 데이터베이스만 지원하는 문법
+
+- 네이티브 SQL을 사용하면 엔티티를 조회할 수 있고 <ins>**JPA가 지원하는 영속성 컨텍스트의 기능을 그대로 사용할 수 있다.**</ins>
+- 네이티브 SQL로 SQL을 직접 사용할 뿐 나머지는 JPQL과 같음. **조회한 엔티티가 영속성 컨텍스트에서 관리**
+- 파라미터 바인딩
+  - JPA: 위치기반 파라미터만 가능
+  - 하이버네이트: 위치기반 및 이름기반 파라미터 바인딩 가능
+
+<br>
+
+### 1️⃣ 조회 및 결과 바인딩
+```java
+// (1) 결과 타입 정의 (엔티티)
+public Query createNativeQuery(String sqlString, Class resultClass);
+
+// (2) 결과 타입을 정의할 수 없을 때
+public Query createNativeQuery(String sqlString);
+
+// (3) 결과 매핑 사용
+public Query createNativeQuery(String sqlString, String resultSetMapping);
+```
+- 조회한 값들은 object[]에 담아 반환
+- 스칼라 값들은 영속성 컨텍스트에서 관리하지 않음 (엔티티는 관리)
+- 엔티티와 스칼라 값을 함께 조회할 경우 `@SqlResulSettMapping`정의 (이름으로 여러 엔티티와 칼럼 매핑 가능)
+
+```java
+Query nativeQuery = em.createNativeQuery(sql, "memberWithOrderCount");
+
+// (1) ColumnResult 사용
+@Entity
+@SqlResultSetMapping(name = "memberWithOrderCount",
+    entities = {@EntityResult(entityClass = Member.class)},
+    columns = {@ColumnResult(name = "ORDER_COUNT")}
+)
+public class Member {...}
+
+// (2) FieldResult 사용
+@Entity
+@SqlResultSetMapping(name = "OrderResults",
+        entities = {
+            @EntityResult(entityClass = com.acme.Order.class,
+                fields = {
+                    @FieldResult(name = "id", column = "order_id"),
+                    @FieldResult(name = "quantity", column = "order_quantity"),
+                    @FieldResult(name = "item", column = "order_item"),
+                })},
+        columns = {@ColumnResult(name = "item_name")}
+)
+public class Member {...}
+```
+
+<br>
+
+### 2️⃣ Named 네이티브 SQL
+```java
+TypeQuery<Member> nativeQuery = em.createNamedQuery("Member.memberSQL", Member.class)
+        .setParameter(1, 20);
+
+@Entity
+@NamedNativeQuery(
+        name = "Member.memberSQL",
+        query = ... ,
+        resultClass = Member.class
+)
+public class Member {...}
+```
+- 결과 매핑과 함께 사용 가능
+
+<br>
+
+> ### 📢 네이티브 SQL 특징과 단점
+> - 네이티브 SQL을 사용하면 엔티티를 조회할 수 있고 <ins>**JPA가 지원하는 영속성 컨텍스트의 기능을 그대로 사용할 수 있다.**</ins>
+> - 단점: 관리하기 쉽지 않고, 자주 사용하면 특정 데이터베이스에 종속적인 쿼리 증가 -> 이식성 감소
+> 👉 <ins>**표준 JPQL 사용**</ins>
+
+<br>
+
+### 3️⃣ 스토어드 프로시저
+```sql
+DELIMITER //
+          CREATE PROCEDURE proc_multiply (INOUT inParam INT, INOUT outParam INT)
+          BEGIN
+            SET outParam = inParam * 2;
+END //
+```
+```java
+StoredProcedureQuery spq = em.createStoredProcedureQuery("proc_multiply");
+spq.registStoredProcedureParameter(1, Integer.class, ParameterMode.IN);
+spq.registStoredProcedureParameter(2, Integer.class, ParameterMode.OUT);
+
+spq.setParameter(1, 100);       // 순서 기반 파라미터
+// spq.setParameter("inParam", 100);        // 이름 기반 파라미터
+spq.execute();
+```
+- Named 스토어드 프로시저도 함께 사용 가능
+
+<br>
+
+## 6) 객체지향 쿼리 심화
+### 1️⃣ 벌크 연산
+- 벌크 연산: 한번에 수정하거나 삭제하는 연산
+- 하이버네이트는 INSERT 벌크 연산도 지원
+```java
+// (1) UPDATE 벌크 연산 (executeUpdate)
+int resultCount = em.createQeury(sqlString)
+                .setParameter("stockAmount", 10)
+                .executeUpdate();
+
+// (2) DELETE 벌크 연산 (executeUpdate)
+int resultCount = em.createQuery(splString)
+                .setParameter("price", 100)
+                .executeUpdate();
+```
+> ### 🚨 벌크 연산 주의점
+> **영속성 컨텍스트와 2차 캐시를 무시하고 데이터베이스에 직접 실행** <br>
+> 벌크 연산이 영속성 컨텍스트를 무시하고 데이터베이스에 직접 쿼리 <br>
+> ➡️ 벌크 연산 후 그 데이터를 조회할 때 수정 전 데이터가 출력
+>
+> #### 해결방법
+> 1) `em.refresh()`: 데이터베이스에서 다시 조회
+> 2) 벌크 연산 먼저 실행 (권장)
+> 3) 벌크 연산 수행 후 영속성 컨텍스트 초기화
+
+<br>
+
+### 2️⃣ 영속성 컨텍스트와 JPQL
+- JPQL로 엔티티를 조회 시 엔티티만 영속성 컨텍스트에서 관리
+- JPQL로 조회한 엔티티는 영속상태
+- 영속성 컨텍스트에 이미 존재하는 엔티티가 있으면 기존 엔티티 반환 
+- `find()` vs `JPQL`
+  - `find()`: 엔티티를 영속성 컨텍스트에서 먼저 찾고 없으면 데이터베이스에서 찾는다.(성능 이점, 1차 캐시)
+  - `JPQL`: 항상 데이터베이스에 SQL을 실행해서 결과 조회, 같은 엔티티가 영속성 컨텍스트에 있으면 영속성 컨텍스트에 있는 기존 엔티티 반환(기존 엔티티 버림)
+👉 <ins>**영속성 컨텍스트는 영속 상테인 엔티티의 동일성 보장**</ins>
+
+<br>
+
+### 3️⃣ JPQL과 플러시 모드
+```java
+em.setFlustMode(FlushModeType.AUTO);    // 커밋 또는 쿼리 실행 시 플러시(기본값)
+em.setFlustMode(FlushModeType.COMMIT);  // 커밋 시에만 플러시
+```
+- `FlushModeType.COMMIT`: 트랜잭션을 커밋할 따만 플러시하고 쿼리를 실행할 때는 플러시 하지 않는다.
+  - 플러시가 너무 빈번하게 발생하면 플러시 횟수를 줄여 성능 최적화 가능
+  - JDBC를 사용할 때도 플러시 모드 사용 고려(직접 플러시 실행)
